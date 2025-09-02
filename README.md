@@ -116,19 +116,70 @@ Se passar disso, a requisição falha com `"Request too large"`.
 
 ---
 
-## 🐍 6. Integração no Python
+# ⚙️ 6. Transformação de dados com CDO
 
-Depois do download (`output.nc`):  
+O **CDO (Climate Data Operators)** é uma ferramenta poderosa para processar dados climáticos diretamente no terminal, sem precisar carregar grandes arquivos em memória.
+A seguir, mostramos transformações comuns que você pode aplicar aos dados do ERA5.
 
-```python
-import xarray as xr
+---
 
-# Abre o arquivo
-ds = xr.open_dataset("output.nc")
+### 6.1 Média espacial (`fldmean`)
 
-# Média da temperatura a 2 m no tempo
-mean_temp = ds["t2m"].mean(dim="time")
+```bash
+cdo fldmean output.nc media_espacial_horaria.nc
+```
 
-# Converte para dataframe
-df = ds.to_dataframe().reset_index()
+* **O que faz:** calcula a **média espacial** de todas as grades da variável ao longo da área definida no arquivo.
+* **Exemplo:** se `output.nc` tem temperatura a 2 m (`t2m`) em toda a América do Sul, `fldmean` gera uma série temporal da **temperatura média da região**.
+* **Resultado:** o arquivo `media_espacial_horaria.nc` tem **1 valor por timestep**, reduzindo drasticamente o tamanho do arquivo e facilitando análises temporais.
+
+```bash
+cdo infon media_espacial_horaria.nc
+```
+
+* Exibe informações sobre o novo arquivo: mínima, máxima e média da variável em cada timestep.
+
+---
+
+### 6.2 Média diária (`daymean`)
+
+```bash
+cdo daymean -mergetime output.nc teste_medial.nc
+```
+
+* **O que faz:** calcula a **média diária** a partir de dados horários.
+* `-mergetime` combina vários arquivos ou timesteps em uma sequência contínua antes de calcular a média diária.
+* **Exemplo:** dados horários de temperatura ao longo de um mês se tornam uma série de médias diárias.
+* **Resultado:** `teste_medial.nc` contém **1 valor por dia** para cada variável.
+
+---
+
+### 6.3 Conversão de unidades (`subc`)
+
+```bash
+cdo subc,273.15 teste_medial.nc teste_medial1.nc
+```
+
+* **O que faz:** subtrai **273.15** de todos os valores, convertendo temperatura de **Kelvin para Celsius**.
+* **Exemplo:** `t2m` passa de 297 K → 24 °C.
+* **Resultado:** `teste_medial1.nc` está pronto para análises e visualizações em unidades mais intuitivas.
+
+---
+
+### 6.4 Observações importantes
+
+* Sempre **crie um novo arquivo** ao aplicar operações (`teste_medial1.nc`) para evitar erros de permissão ou sobrescrita.
+* É possível combinar várias operações em um **pipeline CDO**, reduzindo a quantidade de arquivos intermediários:
+
+```bash
+cdo subc,273.15 -daymean -mergetime output.nc temperatura_diaria_celsius.nc
+```
+
+* Neste exemplo, o CDO:
+
+  1. Junta os timesteps (`mergetime`)
+  2. Calcula a média diária (`daymean`)
+  3. Converte de Kelvin para Celsius (`subc`)
+  4. Salva o resultado em `temperatura_diaria_celsius.nc`
+
 
