@@ -70,7 +70,8 @@ Cada snapshot da grade para essa combinação conta como **1 field**.
 **Exemplo prático:**
 - Variável: temperatura a 2 m  
 - 1 mês (30 dias)  
-- 24 horas por dia  
+- 24 horas por dia
+- `Variável x Mês x Horas = Fields -> 1 x 30 x 24 = 720`
 
 Se adicionar outra variável, dobra o número de fields.  
 
