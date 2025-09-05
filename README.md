@@ -2,89 +2,91 @@
 
 ## 📌 Introdução
 
-Este guia explica, de forma clara e prática, como usar a API do **ERA5** através do **Climate Data Store (CDS)**.  
-O ERA5 é um dos principais conjuntos de dados climáticos globais, usado em pesquisas e aplicações de meteorologia, meio ambiente e ciência de dados.  
+Este guia explica, de forma clara e prática, como usar a API do **ERA5** e automatizar o download de dados do **ERA5** através do **Climate Data Store (CDS)**.
 
-A API permite **automatizar downloads**, selecionar apenas as informações necessárias e integrar os dados diretamente em análises com Python.  
-A seguir, explicamos o que é o ERA5, como funciona a API, seus limites e como organizar requisições de forma eficiente.  
+O ERA5 é um dos principais conjuntos de dados climáticos globais, usado em pesquisas e aplicações de meteorologia, meio ambiente e ciência de dados. O script fornecido permite **automatizar downloads**, selecionar apenas as informações necessárias e preparar os dados para análise em Python.
 
 ---
 
 ## 🌍 1. O que é o ERA5?
 
-O **ERA5** é a quinta geração de reanálises climáticas do **ECMWF** (Centro Europeu de Previsões Meteorológicas a Médio Prazo).  
+ **ERA5** é a quinta geração de reanálises climáticas do **ECMWF** (Centro Europeu de Previsões Meteorológicas a Médio Prazo).
 
-Em termos simples:  
-- Ele pega **observações do clima real** (estações, satélites, balões, navios etc.).  
-- Usa um **modelo atmosférico moderno** para "recriar" as condições climáticas passadas.  
+Em termos simples:
+- Ele combina **observações reais do clima** (de estações, satélites, balões, etc.).
+- Usa um **modelo atmosférico moderno** para "recriar" as condições climáticas do passado de forma consistente.
 
-O resultado é um **banco de dados global, consistente e detalhado**, com informações desde **1940 até o presente**, em **resolução horária** (uma leitura por hora).  
+O resultado é um **banco de dados global e detalhado**, com informações desde **1940 até o presente**, em **resolução horária**.
+  
 
 ---
 
-## 💻 2. Como funciona o repositório `climateDataStore`
+## 💻 2. Como funciona o script `cdsAPI.py`
 
-O código do repositório segue um fluxo simples e eficiente:  
+O código do repositório segue um fluxo simples e eficiente, dividido em funções claras:
 
-1. **Autenticação**: login na API usando a chave de acesso.  
-2. **Requisição**: escolha do dataset, variáveis, área geográfica, tempo e formato de saída.  
-3. **Download**: os dados são salvos em um arquivo `.nc` (NetCDF).  
-4. **Tratamento**: o arquivo é aberto no Python com `xarray` e convertido para formatos mais fáceis (como `.csv`).  
+1.  **Autenticação**: O script inicia um cliente (`cdsapi.Client`) que se autentica automaticamente usando as credenciais definidas no arquivo `.env`.
+2.  **Definição da Requisição**: A função `get_request_params()` define todos os parâmetros do download: variáveis, período, área geográfica e formato. É aqui que você personaliza sua extração.
+3.  **Extração dos Dados**: A função `extract_data()` executa o download. Ela gera um nome de arquivo único com data e hora (ex: `extract_20250905_103000.nc`) e salva os dados no formato NetCDF (`.nc`).
+4.  **Pré-visualização**: Ao final, a função `preview_dataset()` utiliza a biblioteca `xarray` para abrir o arquivo `.nc` e exibir um resumo de suas dimensões e variáveis, confirmando que o download foi bem-sucedido.
 
 ### 📦 Bibliotecas usadas
-- **`cdsapi`** → Cliente oficial para conversar com a API do CDS.  
-- **`xarray`** → Manipulação de dados multidimensionais (NetCDF).  
-- **`netCDF4`** → Leitura/escrita do formato NetCDF.  
-- **`dotenv`** → Para guardar a chave da API de forma segura (em `.env`).  
+- **`cdsapi`** → Cliente oficial para interagir com a API do CDS.
+- **`xarray`** → Essencial para manipulação de dados multidimensionais (NetCDF).
+- **`python-dotenv`** → Para carregar as chaves da API de forma segura a partir de um arquivo `.env`.
+- **`netCDF4`** → Motor para leitura e escrita do formato NetCDF, usado pelo `xarray`.
+- **`logging`** → Para exibir mensagens informativas e de erro durante a execução.
 
 ---
 
 ## 🔑 3. Como usar a API
 
 ### 3.1 Autenticação
-- Crie uma conta no [CDS](https://cds.climate.copernicus.eu).  
-- Sua chave fica salva em `~/.cdsapirc` ou em um `.env`.  
-- O `cdsapi.Client()` usa essa chave para autenticar seus pedidos.  
+- Crie uma conta no [CDS](https://cds.climate.copernicus.eu).
+- Copie sua chave de acesso (UID e Key).
+- Crie um arquivo chamado `.env` no mesmo diretório do script e adicione suas credenciais:
+
+- #### `CDSAPI_URL=https://cds.climate.copernicus.eu/api/v2`
+- #### `CDSAPI_KEY=SUA_UID:SUA_API_KEY`
+
+- O `cdsapi.Client()` usará essas chaves para autenticar seus pedidos.
 
 ### 3.2 Formatos de saída
-- **NetCDF (`.nc`)** → Melhor para ciência de dados. Funciona bem com `xarray`.  
-- **GRIB (`.grib`)** → Formato compacto usado em meteorologia operacional, mas mais difícil de manipular.  
+- **NetCDF (`.nc`)** → Formato ideal para ciência de dados e usado no script. Funciona perfeitamente com `xarray`.
+- **GRIB (`.grib`)** → Formato compacto usado em meteorologia operacional, mas geralmente mais complexo de manipular em Python.
 
 ---
 
 ## ⚠️ 4. Limitações da API
 
 ### 4.1 Tamanho máximo por requisição
-- Cada pedido em **NetCDF** não pode passar de **20 GB**.  
-- Se passar disso, a requisição falha.  
-- **Não existe limite diário** → você pode baixar **100 GB ou mais em um dia**, desde que divida em vários pedidos menores.  
+- Cada pedido em **NetCDF** não pode passar de **20 GB**. Se o pedido for maior, a requisição falhará.
+- **Não existe limite diário de downloads**. Você pode baixar 100 GB ou mais em um dia, desde que divida em múltiplos pedidos menores que 20 GB.
 
 ### 4.2 O que são *fields*?
-Um **field** é uma combinação única de:  
-- **Variável** (ex: temperatura a 2 m)  
-- **Nível** (ex: superfície, 850 hPa, etc.)  
-- **Data/Hora** (ex: 2000-01-01 00:00)  
-
-Cada snapshot da grade para essa combinação conta como **1 field**.  
+Um **field** é uma combinação única de:
+- **Variável** (ex: temperatura do solo nível 1)
+- **Nível** (ex: superfície, 850 hPa)
+- **Data/Hora** (ex: 2002-03-11 00:00)
 
 **Exemplo prático:**
-- Variável: temperatura a 2 m  
-- 1 mês (30 dias)  
+- Variável: temperatura a 2 m
+- 1 mês (30 dias)
 - 24 horas por dia
-- `Variável x Mês x Horas = Fields -> 1 x 30 x 24 = 720`
+- `1 Variável x 30 Dias x 24 Horas = 720 fields`
 
-Se adicionar outra variável, dobra o número de fields.  
+Se adicionar outra variável, o número de fields dobra.
 
 ### 4.3 Limite de fields
-- ERA5 horário → até **120.000 fields por requisição**  
-- ERA5 mensal → até **10.000 fields por requisição**  
-- ERA5-Land → até **12.000 fields por mês**  
+- **ERA5 horário** → até **120.000 fields** por requisição
+- **ERA5 mensal** → até **10.000 fields** por requisição
 
-Se passar disso, a requisição falha com `"Request too large"`.  
+Se o limite for ultrapassado, a requisição falha com o erro `"Request too large"`.
 
 ### 4.4 Tempo de espera
-- Pedidos pequenos → **5 a 15 minutos**  
-- Pedidos grandes, dentro do limite → até **2 a 3 horas**  
+- Pedidos pequenos → **5 a 15 minutos**
+- Pedidos grandes (próximos do limite) → até **2 a 3 horas**
+
 - Pedidos fora do limite → nunca terminam; precisam ser refeitos em partes menores  
 
 ### 4.5 Por que os limites mudam entre datasets
@@ -117,11 +119,9 @@ Se passar disso, a requisição falha com `"Request too large"`.
 
 ---
 
-# ⚙️ 6. Transformação de dados com CDO
+# ⚙️ 6. Pós-processamento com CDO
 
-O **CDO (Climate Data Operators)** é uma ferramenta poderosa para processar dados climáticos diretamente no terminal, sem precisar carregar grandes arquivos em memória.
-A seguir, mostramos transformações comuns que você pode aplicar aos dados do ERA5.
-
+- Após baixar o arquivo `.nc` com o script, você pode usar ferramentas de linha de comando como o **CDO (Climate Data Operators)** para realizar manipulações rápidas sem carregar os dados na memória.
 ---
 
 ### 6.1 Média espacial (`fldmean`)
